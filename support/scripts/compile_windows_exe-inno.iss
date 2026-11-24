@@ -115,6 +115,9 @@ Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Com
 ; starts this installation. This runs in 64-bit PowerShell because a 32-bit process, like the uninstaller, reads a shortcut
 ; into C:\Program Files as C:\Program Files (x86).
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""$exe = Join-Path $PWD.Path '{#MyAppExeName}'; $lnk = Join-Path ([Environment]::GetFolderPath('SendTo')) '{#MyAppName}.lnk'; if ((Test-Path -LiteralPath $lnk) -and (New-Object -ComObject WScript.Shell).CreateShortcut($lnk).TargetPath -eq $exe) {{ Remove-Item -LiteralPath $lnk }"""; WorkingDir: {app}; Flags: runhidden waituntilterminated; RunOnceId: "RemoveSendToShortcut"
+; The app also adds the "Share with Akio Local Send" Explorer context menu entry (context_menu_helper.dart).
+Filename: "{sys}\reg.exe"; Parameters: "delete ""HKCU\Software\Classes\*\shell\AkioLocalSend"" /f"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveContextMenuFiles"
+Filename: "{sys}\reg.exe"; Parameters: "delete ""HKCU\Software\Classes\Directory\shell\AkioLocalSend"" /f"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveContextMenuFolders"
 ; Windows adds firewall rules for the exe when the user allows access on the first start. Removing them requires admin rights.
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=all program=""{app}\{#MyAppExeName}"""; Flags: runhidden waituntilterminated; Check: IsAdminInstallMode; RunOnceId: "DeleteFirewallRules"
 #ifndef SkipMsixHelper

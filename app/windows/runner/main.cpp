@@ -2,6 +2,7 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+#include "context_share.h"
 #include "flutter_window.h"
 #include "utils.h"
 #include "winrt_ext.h"
@@ -22,6 +23,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
+
+  // One process per selected file when started from the context menu: only
+  // the one collecting all paths starts the app.
+  if (!CollectContextSharePaths(command_line_arguments)) {
+    ::CoUninitialize();
+    return EXIT_SUCCESS;
+  }
 
   if (IsRunningWithIdentity()) {
     winrt::hstring share_arg = GetSharedMedia();

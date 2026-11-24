@@ -123,6 +123,10 @@ Future<RefenaContainer> preInit(List<String> args) async {
       await exitApp(); // Another instance does exist
     }
 
+    if (!persistenceService.isFirstAppStart) {
+      unawaited(refreshContextMenu());
+    }
+
     // initialize tray AFTER i18n has been initialized
     try {
       await initTray();
