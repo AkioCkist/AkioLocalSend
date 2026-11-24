@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <system_error>
@@ -88,11 +89,17 @@ uintmax_t QueueSize(const std::filesystem::path& file) {
 }  // namespace
 
 bool CollectContextSharePaths(std::vector<std::string>& arguments) {
-  auto flag = std::find(arguments.begin(), arguments.end(), kContextShareFlag);
+  // Utf8FromUtf16 keeps the terminating null character inside each string, so
+  // compare (and later store) the C strings only.
+  auto flag = std::find_if(arguments.begin(), arguments.end(),
+                           [](const std::string& argument) { return std::strcmp(argument.c_str(), kContextShareFlag) == 0; });
   if (flag == arguments.end()) {
     return true;
   }
   arguments.erase(flag);
+  for (auto& argument : arguments) {
+    argument = std::string(argument.c_str());
+  }
 
   HANDLE queue_mutex = ::CreateMutexW(nullptr, FALSE, kQueueMutexName);
   if (queue_mutex == nullptr) {

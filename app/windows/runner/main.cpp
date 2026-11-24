@@ -21,6 +21,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   flutter::DartProject project(L"data");
 
+  // A process started by the user (e.g. from the Explorer context menu) may
+  // take the foreground, but an instance that is already running may not:
+  // Windows only flashes its taskbar button. Pass the right on, so that the
+  // running instance can come to the front when this process hands over its
+  // arguments to it.
+  ::AllowSetForegroundWindow(ASFW_ANY);
+
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 
