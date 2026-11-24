@@ -70,7 +70,11 @@ Future<void> refreshContextMenu() async {
     return;
   }
   try {
-    if (await isContextMenuEnabled()) {
+    final registered = await _registeredShellVerbCommand();
+    if (registered == _shellVerbCommand) {
+      return; // up to date, the common case on every start
+    }
+    if (registered != null || await File(_getWindowsFilePath(_windowsFileName)).exists()) {
       await _addShellVerb();
     }
   } catch (e) {
@@ -109,7 +113,7 @@ Future<bool> _addShellVerb() async {
       // Shows the entry for any number of selected items (without it, Explorer hides it above 15).
       ..write('"MultiSelectModel"="Player"\r\n')
       ..write('\r\n[$key\\command]\r\n')
-      ..write('@=${_regString('"$exe" $_contextShareFlag "%1"')}\r\n');
+      ..write('@=${_regString(_shellVerbCommand)}\r\n');
   }
 
   final dir = await Directory.systemTemp.createTemp('localsend_context_menu');
@@ -149,12 +153,22 @@ Future<void> _removeShellVerb() async {
   }
 }
 
-Future<bool> _isShellVerbRegistered() async {
+String get _shellVerbCommand => '"${Platform.resolvedExecutable}" $_contextShareFlag "%1"';
+
+Future<bool> _isShellVerbRegistered() async => await _registeredShellVerbCommand() != null;
+
+/// The command line of the registered entry, or null if there is none.
+Future<String?> _registeredShellVerbCommand() async {
   try {
     final result = await Process.run('reg', ['query', '${_verbKeys.first}\\command', '/ve']);
-    return result.exitCode == 0;
+    if (result.exitCode != 0) {
+      return null;
+    }
+    // Output line: "    (Default)    REG_SZ    <command>"
+    final match = RegExp(r'REG_SZ\s+(.*)$', multiLine: true).firstMatch(result.stdout as String);
+    return match?.group(1)?.trim() ?? '';
   } catch (_) {
-    return false;
+    return null;
   }
 }
 

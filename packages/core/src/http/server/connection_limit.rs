@@ -9,8 +9,8 @@ use std::sync::{Arc, Mutex};
 pub(crate) const MAX_CONNECTIONS: usize = 64;
 
 /// How many connections a single peer may hold, so that one peer cannot take
-/// every slot. Real peers use a few: a sender uploads two files in parallel
-/// and browsers open up to six connections per host.
+/// every slot. Real peers use a few: a sender uploads up to four files in
+/// parallel and browsers open up to six connections per host.
 pub(crate) const MAX_CONNECTIONS_PER_IP: usize = 8;
 
 #[derive(Debug, PartialEq, Eq)]

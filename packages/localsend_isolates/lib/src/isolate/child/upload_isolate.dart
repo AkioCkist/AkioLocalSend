@@ -16,6 +16,28 @@ import 'package:typed_isolates/typed_isolates.dart';
 /// How many files of a [HttpUploadFilesTask] are uploaded in parallel.
 const _concurrency = 2;
 
+/// How many files are uploaded in parallel when they are small on average.
+///
+/// Small files spend most of their time on per-request round trips (TLS
+/// record, HTTP request, the receiver opening and closing the file), which
+/// parallel uploads overlap. Stays well below the 8 connections per IP that
+/// receivers accept (MAX_CONNECTIONS_PER_IP in the Rust server); older
+/// receivers have no limit at all.
+const _smallFileConcurrency = 4;
+
+/// Below this average file size a task counts as "small files".
+/// Large files keep [_concurrency]: they are limited by the bandwidth anyway,
+/// and parallel writes of large files make a hard disk seek back and forth.
+const _smallFileAverageSize = 8 * 1024 * 1024;
+
+int _concurrencyFor(List<HttpUploadFile> files) {
+  if (files.isEmpty) {
+    return _concurrency;
+  }
+  final totalSize = files.fold<int>(0, (sum, file) => sum + file.fileSize);
+  return totalSize / files.length < _smallFileAverageSize ? _smallFileConcurrency : _concurrency;
+}
+
 /// How often a single file is uploaded at most when the receiver keeps
 /// rejecting it with a checksum mismatch (HTTP 422).
 /// Must not exceed MAX_UPLOAD_ATTEMPTS of the Rust server which stops
@@ -143,7 +165,7 @@ Future<void> setupHttpUploadIsolate(
       final cancelToken = createCancellationToken();
       ref.read(_cancelTokenProvider).putIfAbsent(task.id, () => cancelToken);
       try {
-        await Pool(_concurrency).forEach<HttpUploadFile, void>(uploadTask.files, (file) async {
+        await Pool(_concurrencyFor(uploadTask.files)).forEach<HttpUploadFile, void>(uploadTask.files, (file) async {
           if (!ref.read(_cancelTokenProvider).containsKey(task.id)) {
             // the task was canceled, do not upload the remaining files
             return;
